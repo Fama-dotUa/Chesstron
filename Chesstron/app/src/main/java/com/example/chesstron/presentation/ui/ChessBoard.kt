@@ -1,52 +1,43 @@
 package com.example.chesstron.presentation.ui
 
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.min
-import androidx.compose.ui.unit.times
-import com.example.chesstron.data.model.ChessPiece
 import com.example.chesstron.domain.usecase.ChessCell
-import com.example.chesstron.domain.usecase.initializePieces
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.chesstron.domain.usecase.isMoveValid
+import com.example.chesstron.viewmodel.ChessBoardViewModel
 
 @Composable
 fun ChessBoard() {
+    val viewModel: ChessBoardViewModel = viewModel()
+
+    val pieces = viewModel.pieces
+    val selectedPiece = viewModel.selectedPiece.value
+    val possibleMoves = viewModel.possibleMoves
+    val attackablePositions = viewModel.attackablePositions
+
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background),
         contentAlignment = Alignment.Center
     ) {
-        var selectedPiece by remember { mutableStateOf<ChessPiece?>(null) }
-        val pieces = remember { mutableStateListOf<ChessPiece>() }
-        val possibleMoves = remember { mutableStateListOf<Pair<Int, Int>>() }
-        val attackablePositions = remember { mutableStateListOf<Pair<Int, Int>>() }
         val boardSize = min(maxWidth, maxHeight)
         val cellSize = boardSize / 8
 
@@ -73,52 +64,29 @@ fun ChessBoard() {
                                     cellSize = cellSize,
                                     isHighlighted = possibleMoves.contains(row to col),
                                     onClick = {
-                                        val clickedPiece = pieces.find { it.row == row && it.col == col }
+                                        val clickedPiece = viewModel.getClickedPiece(row, col)
 
                                         when {
                                             selectedPiece == null && clickedPiece != null -> {
-                                                // Вибір фігури
-                                                selectedPiece = clickedPiece
-                                                possibleMoves.clear()
-                                                possibleMoves.addAll(
-                                                    (0 until 8).flatMap { r ->
-                                                        (0 until 8).mapNotNull { c ->
-                                                            if (isMoveValid(clickedPiece, r, c, pieces)) Pair(r, c) else null
-                                                        }
-                                                    }
-                                                )
+                                                viewModel.selectPiece(clickedPiece)
                                             }
 
-                                            selectedPiece != null && clickedPiece?.color == selectedPiece!!.color -> {
-                                                // Клік по своїй фігурі → переобираємо
-                                                selectedPiece = clickedPiece
-                                                possibleMoves.clear()
-                                                possibleMoves.addAll(
-                                                    (0 until 8).flatMap { r ->
-                                                        (0 until 8).mapNotNull { c ->
-                                                            if (isMoveValid(clickedPiece, r, c, pieces)) Pair(r, c) else null
-                                                        }
-                                                    }
-                                                )
+                                            selectedPiece != null && clickedPiece?.color == selectedPiece.color -> {
+                                                viewModel.selectPiece(clickedPiece)
                                             }
 
-                                            selectedPiece != null && isMoveValid(selectedPiece!!, row, col, pieces) -> {
-                                                // Переміщення або биття
-                                                pieces.removeAll { it.row == row && it.col == col && it.color != selectedPiece!!.color }
-                                                selectedPiece!!.row = row
-                                                selectedPiece!!.col = col
-                                                selectedPiece = null
-                                                possibleMoves.clear()
+                                            selectedPiece != null &&
+                                                    isMoveValid(
+                                                        selectedPiece, row, col, pieces
+                                                    ) -> {
+                                                viewModel.moveSelectedTo(row, col)
                                             }
 
                                             else -> {
-                                                // Невірна дія → просто скидуємо
-                                                selectedPiece = null
-                                                possibleMoves.clear()
+                                                viewModel.deselectPiece()
                                             }
                                         }
                                     }
-
                                 )
                             }
                         }
@@ -127,22 +95,13 @@ fun ChessBoard() {
 
                 // ♟️ Фігури поверх
                 pieces.forEach { piece ->
-
                     ChessPieceView(
                         piece = piece,
                         cellSize = cellSize,
                         isSelected = selectedPiece == piece,
-
+                        isAttackTarget = attackablePositions.contains(piece.row to piece.col)
                     )
-
                 }
-            }
-        }
-
-        // 📦 Стартові фігури
-        LaunchedEffect(Unit) {
-            if (pieces.isEmpty()) {
-                pieces.addAll(initializePieces())
             }
         }
     }
