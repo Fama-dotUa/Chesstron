@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.times
 import com.example.chesstron.data.model.ChessPiece
 
@@ -21,8 +22,7 @@ import com.example.chesstron.data.model.ChessPiece
 fun ChessPieceView(
     piece: ChessPiece,
     cellSize: Dp,
-    isSelected: Boolean,
-    onClick: () -> Unit
+    isSelected: Boolean
 ) {
     val scale by animateFloatAsState(
         targetValue = if (isSelected) 1.15f else 1f,
@@ -42,7 +42,6 @@ fun ChessPieceView(
                 scaleY = scale
                 translationY = if (isSelected) -8f else 0f
             }
-            .clickable { onClick() }
     ) {
         Image(
             painter = painterResource(id = getDrawableForPiece(piece)),
@@ -51,3 +50,4 @@ fun ChessPieceView(
         )
     }
 }
+
