@@ -1,10 +1,74 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/main"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".ContactActivity">
+    android:id ="@+id/main"
+    android:padding="24dp"
+    android:background="#F5F5F5">
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="16dp"
+            android:text="Контакти"
+            android:textColor="#333333"
+            android:textSize="34sp"
+            android:textStyle="bold" />
+
+        <!-- Телефон -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:text="📞 Телефон: +38 (099) 123-45-67"
+            android:textSize="20sp" />
+
+        <!-- Email -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:text="✉️ Email: info@droidcafe.com"
+            android:textSize="20sp" />
+
+        <!-- Адрес -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:text="📍 Адреса: Київ, вул. Android, 42"
+            android:textSize="20sp" />
+
+        <!-- Часи роботи -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="24dp"
+            android:text="🕒 Працюємо: Пн-Нд, 09:00 - 20:00"
+            android:textSize="20sp" />
+
+        <!-- Кнопки дії -->
+        <Button
+            android:id="@+id/call_button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="#B6BF66CE"
+            android:text="Зателефонувати"
+            android:textSize="20sp" />
+
+        <Button
+            android:id="@+id/email_button"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:background="#B6BF66CE"
+            android:text="Написати email"
+            android:textSize="20sp" />
+
+    </LinearLayout>
+</ScrollView>
