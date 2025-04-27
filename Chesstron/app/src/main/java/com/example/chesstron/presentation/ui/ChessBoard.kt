@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -34,17 +33,17 @@ import com.example.chesstron.R
 import com.example.chesstron.data.model.PieceColor
 import com.example.chesstron.data.model.PieceType
 import com.example.chesstron.domain.usecase.ChessCell
-import com.example.chesstron.viewmodel.ChessBoardViewModel
+import com.example.chesstron.presentation.viewmodel.ChessBoardViewModel
 
 @Composable
 fun ChessBoard() {
     val viewModel: ChessBoardViewModel = viewModel()
+    val gameState = viewModel.gameState.value
 
-    val pieces = viewModel.pieces
-    val selectedPiece = viewModel.selectedPiece.value
-    val possibleMoves = viewModel.possibleMoves
-    val attackablePositions = viewModel.attackablePositions
-
+    val pieces = gameState.pieces
+    val selectedPiece = gameState.selectedPiece
+    val possibleMoves = gameState.possibleMoves
+    val attackablePositions = gameState.attackablePositions
 
     BoxWithConstraints(
         modifier = Modifier
@@ -55,7 +54,6 @@ fun ChessBoard() {
         val boardSize = min(maxWidth, maxHeight)
         val cellSize = boardSize / 8
 
-        // 🔫 Рамка дошки
         Box(
             modifier = Modifier
                 .size(boardSize + 8.dp)
@@ -64,10 +62,7 @@ fun ChessBoard() {
                 .shadow(6.dp, RoundedCornerShape(12.dp))
                 .padding(1.5.dp)
         ) {
-            // ♟️ Внутрішня дошка
             Box(modifier = Modifier.fillMaxSize()) {
-
-                // 📆 Клітинки
                 Column {
                     for (row in 0 until 8) {
                         Row {
@@ -77,9 +72,11 @@ fun ChessBoard() {
                                     col = col,
                                     cellSize = cellSize,
                                     isHighlighted = possibleMoves.contains(row to col),
-                                    isInCheck = viewModel.checkPosition.value == row to col,
-                                    isCheckmate = viewModel.isMate.value && viewModel.checkPosition.value == row to col,
+                                    isInCheck = gameState.checkPosition == row to col,
+                                    isCheckmate = gameState.isMate && gameState.checkPosition == row to col,
                                     onClick = {
+                                        if (gameState.gameOver) return@ChessCell
+
                                         val clickedPiece = viewModel.getClickedPiece(row, col)
 
                                         when {
@@ -103,7 +100,6 @@ fun ChessBoard() {
                     }
                 }
 
-                // ♟️ Фігури поверх
                 pieces.forEach { piece ->
                     ChessPieceView(
                         piece = piece,
@@ -113,18 +109,16 @@ fun ChessBoard() {
                     )
                 }
 
-
-                // 🌟 Промоція над пішаком
-                viewModel.pendingPromotion.value?.let { pawn ->
-                    val promotionWidth = cellSize * 4 + 12.dp // ширина вікна 4 кнопки + відступи
+                gameState.pendingPromotion?.let { pawn ->
+                    val promotionWidth = cellSize * 4 + 12.dp
                     val maxOffsetX = boardSize - promotionWidth
 
                     val promotionOffsetX = (pawn.col * cellSize).coerceIn(0.dp, maxOffsetX)
 
                     val promotionOffsetY = if (pawn.row == 0) {
-                        cellSize // віконце під пішаком
+                        cellSize
                     } else {
-                        -cellSize // віконце над пішаком
+                        -cellSize
                     }
                     Box(
                         modifier = Modifier
@@ -143,15 +137,11 @@ fun ChessBoard() {
                         }
                     }
                 }
-
             }
         }
     }
 
-
-
-
-    if (viewModel.isMate.value) {
+    if (gameState.isMate) {
         AlertDialog(
             onDismissRequest = {},
             title = { Text("Мат!") },
@@ -164,7 +154,7 @@ fun ChessBoard() {
         )
     }
 
-    if (viewModel.isStalemate.value) {
+    if (gameState.isStalemate) {
         AlertDialog(
             onDismissRequest = {},
             title = { Text("Пат!") },
@@ -177,6 +167,7 @@ fun ChessBoard() {
         )
     }
 }
+
 @Composable
 fun PromotionButton(type: PieceType, color: PieceColor, onClick: () -> Unit) {
     Button(
