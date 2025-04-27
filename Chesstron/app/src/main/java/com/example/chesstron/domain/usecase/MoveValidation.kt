@@ -2,14 +2,18 @@ package com.example.chesstron.domain.usecase
 
 import com.example.chesstron.data.model.*
 
-fun isMoveValid(piece: ChessPiece, toRow: Int, toCol: Int, pieces: List<ChessPiece>): Boolean {
+fun isMoveValid(
+    piece: ChessPiece,
+    toRow: Int,
+    toCol: Int,
+    pieces: List<ChessPiece>,
+    enPassantTarget: Pair<Int, Int>?
+): Boolean {
     val fromRow = piece.row
     val fromCol = piece.col
 
-    // Не дозволяємо хід на свою позицію
     if (fromRow == toRow && fromCol == toCol) return false
 
-    // Не дозволяємо бити свої фігури
     val target = pieces.find { it.row == toRow && it.col == toCol }
     if (target?.color == piece.color) return false
 
@@ -28,8 +32,16 @@ fun isMoveValid(piece: ChessPiece, toRow: Int, toCol: Int, pieces: List<ChessPie
                     target != null &&
                     target.color != piece.color
 
-            oneStepForward || twoStepForward || captureMove
+            // 🟡 НОВЕ: Бій на проході
+            val enPassantCapture = enPassantTarget != null &&
+                    toRow == enPassantTarget.first &&
+                    toCol == enPassantTarget.second &&
+                    kotlin.math.abs(fromCol - toCol) == 1 &&
+                    fromRow + dir == toRow
+
+            oneStepForward || twoStepForward || captureMove || enPassantCapture
         }
+
 
         PieceType.ROOK -> {
             (fromRow == toRow || fromCol == toCol) && isPathClear(fromRow, fromCol, toRow, toCol, pieces)
@@ -57,6 +69,7 @@ fun isMoveValid(piece: ChessPiece, toRow: Int, toCol: Int, pieces: List<ChessPie
         }
     }
 }
+
 
 
 fun isPathClear(fromRow: Int, fromCol: Int, toRow: Int, toCol: Int, pieces: List<ChessPiece>): Boolean {

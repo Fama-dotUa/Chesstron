@@ -29,7 +29,9 @@ fun ChessCell(
     col: Int,
     cellSize: Dp,
     onClick: () -> Unit,
-    isHighlighted: Boolean = false
+    isHighlighted: Boolean = false,
+    isInCheck: Boolean = false,
+    isCheckmate: Boolean = false
 ){
     var isPressed by remember { mutableStateOf(false) }
 
@@ -44,6 +46,15 @@ fun ChessCell(
     )
     val coordColor = Color(0xFF1A1A1A)
 
+    val dangerColor by animateColorAsState(
+        targetValue = when {
+            isCheckmate -> Color(0xFFFF0000) // постійно червона
+            isInCheck -> Color(0x66FF0000) // напівпрозора
+            else -> animatedColor
+        },
+        animationSpec = tween(durationMillis = 600),
+        label = "DangerColor"
+    )
     LaunchedEffect(isPressed) {
         if (isPressed) {
             kotlinx.coroutines.delay(300L)
@@ -54,7 +65,7 @@ fun ChessCell(
     Box(
         modifier = Modifier
             .size(cellSize)
-            .background(animatedColor)
+            .background(dangerColor)
             .clickable {
                 isPressed = true
                 onClick()
