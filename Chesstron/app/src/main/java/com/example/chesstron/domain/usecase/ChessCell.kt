@@ -31,8 +31,11 @@ fun ChessCell(
     onClick: () -> Unit,
     isHighlighted: Boolean = false,
     isInCheck: Boolean = false,
-    isCheckmate: Boolean = false
-){
+    isCheckmate: Boolean = false,
+    isLastMoveFrom: Boolean = false,
+    isLastMoveTo: Boolean = false,
+
+    ){
     var isPressed by remember { mutableStateOf(false) }
 
     val isLight = (row + col) % 2 == 0
@@ -55,6 +58,7 @@ fun ChessCell(
         animationSpec = tween(durationMillis = 600),
         label = "DangerColor"
     )
+
     LaunchedEffect(isPressed) {
         if (isPressed) {
             kotlinx.coroutines.delay(300L)
@@ -104,6 +108,20 @@ fun ChessCell(
                     .align(Alignment.Center)
             )
         }
-    }
+        if (isLastMoveFrom) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color(0x4487CEFA)) // світло-блакитний (напівпрозорий)
+            )
+        }
 
+        if (isLastMoveTo) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color(0x7787CEFA)) // яскравіший блакитний
+            )
+        }
+    }
 }

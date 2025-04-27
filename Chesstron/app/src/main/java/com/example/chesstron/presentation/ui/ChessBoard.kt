@@ -67,6 +67,12 @@ fun ChessBoard() {
                     for (row in 0 until 8) {
                         Row {
                             for (col in 0 until 8) {
+
+                                val lastMove = viewModel.gameState.value.lastMove
+                                if (lastMove != null) {
+                                    println("Last move: from ${lastMove.first} to ${lastMove.second}")
+                                }
+
                                 ChessCell(
                                     row = row,
                                     col = col,
@@ -74,6 +80,8 @@ fun ChessBoard() {
                                     isHighlighted = possibleMoves.contains(row to col),
                                     isInCheck = gameState.checkPosition == row to col,
                                     isCheckmate = gameState.isMate && gameState.checkPosition == row to col,
+                                    isLastMoveFrom = lastMove?.first == (row to col),
+                                    isLastMoveTo = lastMove?.second == (row to col),
                                     onClick = {
                                         if (gameState.gameOver) return@ChessCell
 

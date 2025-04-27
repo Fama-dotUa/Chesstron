@@ -83,7 +83,8 @@ class ChessBoardViewModel : ViewModel() {
                 pendingPromotion = movedPiece,
                 selectedPiece = null,
                 possibleMoves = emptyList(),
-                attackablePositions = emptyList()
+                attackablePositions = emptyList(),
+
             )
             return
         }
@@ -98,7 +99,8 @@ class ChessBoardViewModel : ViewModel() {
             selectedPiece = null,
             possibleMoves = emptyList(),
             attackablePositions = emptyList(),
-            enPassantTarget = newEnPassantTarget
+            enPassantTarget = newEnPassantTarget,
+            lastMove = (startRow to startCol) to (row to col)
         )
 
         updateGameState()
