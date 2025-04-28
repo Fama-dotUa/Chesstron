@@ -19,18 +19,22 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.min
 import androidx.compose.ui.unit.times
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.chesstron.R
+import com.example.chesstron.SoundManager
+import com.example.chesstron.data.GameEvent
 import com.example.chesstron.data.model.PieceColor
 import com.example.chesstron.data.model.PieceType
 import com.example.chesstron.domain.usecase.ChessCell
@@ -45,7 +49,25 @@ fun ChessBoard() {
     val selectedPiece = gameState.selectedPiece
     val possibleMoves = gameState.possibleMoves
     val attackablePositions = gameState.attackablePositions
+    val context = LocalContext.current
 
+    LaunchedEffect(Unit) {
+        SoundManager.initialize(context)
+    }
+
+    LaunchedEffect(viewModel.lastEvent.value) {
+        viewModel.lastEvent.value?.let { event ->
+            when (event) {
+                GameEvent.MoveMade -> SoundManager.playSound("move")
+                GameEvent.CaptureMade -> SoundManager.playSound("capture")
+                GameEvent.Check -> SoundManager.playSound("check")
+                GameEvent.Checkmate -> SoundManager.playSound("checkmate")
+                GameEvent.Stalemate -> SoundManager.playSound("stalemate")
+            }
+            // ОБОВ'ЯЗКОВО обнуляємо після програвання
+            viewModel.lastEvent.value = null
+        }
+    }
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()

@@ -2,6 +2,7 @@ package com.example.chesstron.presentation.viewmodel
 
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
+import com.example.chesstron.data.GameEvent
 import com.example.chesstron.data.model.ChessPiece
 import com.example.chesstron.data.model.ChessRules
 import com.example.chesstron.data.model.GameState
@@ -10,6 +11,8 @@ import com.example.chesstron.data.model.PieceType
 import com.example.chesstron.domain.usecase.initializePieces
 
 class ChessBoardViewModel : ViewModel() {
+    var lastEvent = mutableStateOf<GameEvent?>(null)
+        private set
 
     var gameState = mutableStateOf(GameState())
         private set
@@ -47,7 +50,9 @@ class ChessBoardViewModel : ViewModel() {
     }
 
     fun moveSelectedTo(row: Int, col: Int) {
+
         val piece = gameState.value.selectedPiece ?: return
+        val wasCapture = gameState.value.pieces.any { it.row == row && it.col == col && it.color != piece.color }
         if (!gameState.value.possibleMoves.contains(row to col)) return
 
         val startRow = piece.row
@@ -113,6 +118,11 @@ class ChessBoardViewModel : ViewModel() {
             lastMove = (startRow to startCol) to (row to col)
         )
 
+        if (wasCapture) {
+            lastEvent.value = GameEvent.CaptureMade
+        } else {
+            lastEvent.value = GameEvent.MoveMade
+        }
         updateGameState()
 
         gameState.value = gameState.value.copy(
@@ -145,6 +155,15 @@ class ChessBoardViewModel : ViewModel() {
         val checkPos = ChessRules.getCheckPosition(opponentColor, gameState.value.pieces, gameState.value.enPassantTarget)
         val mate = checkPos != null && ChessRules.isCheckmate(opponentColor, gameState.value.pieces, gameState.value.enPassantTarget)
         val stalemate = !mate && ChessRules.isStalemate(opponentColor, gameState.value.pieces, gameState.value.enPassantTarget)
+        if (checkPos != null && !mate) {
+            lastEvent.value = GameEvent.Check
+        }
+        if (mate) {
+            lastEvent.value = GameEvent.Checkmate
+        }
+        if (stalemate) {
+            lastEvent.value = GameEvent.Stalemate
+        }
 
         gameState.value = gameState.value.copy(
             checkPosition = checkPos,
