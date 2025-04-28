@@ -14,7 +14,7 @@ class ChessRulesTest {
         val king = ChessPiece(PieceType.KING, PieceColor.WHITE, 7, 7)
         val pieces = listOf(pawn, king)
 
-        val moves = ChessRules.generateMoves(pawn, pieces, null)
+        val moves = ChessRules.generateMoves(pawn, pieces, null, PieceColor.WHITE)
 
         assertTrue(moves.contains(5 to 4))
     }
@@ -25,7 +25,7 @@ class ChessRulesTest {
         val king = ChessPiece(PieceType.KING, PieceColor.WHITE, 7, 7)
         val pieces = listOf(rook, king)
 
-        val moves = ChessRules.generateMoves(rook, pieces, null)
+        val moves = ChessRules.generateMoves(rook, pieces, null, PieceColor.WHITE)
 
         assertTrue(moves.contains(4 to 0))
         assertTrue(moves.contains(4 to 7))
@@ -37,7 +37,7 @@ class ChessRulesTest {
         val enemyRook = ChessPiece(PieceType.ROOK, PieceColor.BLACK, 5, 4)
         val pieces = listOf(king, enemyRook)
 
-        val moves = ChessRules.generateMoves(king, pieces, null)
+        val moves = ChessRules.generateMoves(king, pieces, null, PieceColor.WHITE)
 
         assertFalse(moves.contains(6 to 4))
     }
@@ -48,7 +48,7 @@ class ChessRulesTest {
         val rook = ChessPiece(PieceType.ROOK, PieceColor.WHITE, 7, 7)
         val pieces = listOf(king, rook)
 
-        val moves = ChessRules.generateMoves(king, pieces, null)
+        val moves = ChessRules.generateMoves(king, pieces, null, PieceColor.WHITE)
 
         assertTrue(moves.contains(7 to 6))
     }
@@ -60,7 +60,7 @@ class ChessRulesTest {
         val enemyPawn = ChessPiece(PieceType.PAWN, PieceColor.BLACK, 5, 5)
         val pieces = listOf(pawn, king, enemyPawn)
 
-        val moves = ChessRules.generateMoves(pawn, pieces, null)
+        val moves = ChessRules.generateMoves(pawn, pieces, null, PieceColor.WHITE)
 
         assertTrue(moves.contains(5 to 5))
     }
@@ -71,7 +71,7 @@ class ChessRulesTest {
         val rook = ChessPiece(PieceType.ROOK, PieceColor.BLACK, 5, 4)
         val pieces = listOf(king, rook)
 
-        val check = ChessRules.getCheckPosition(PieceColor.WHITE, pieces, null)
+        val check = ChessRules.getCheckPosition(PieceColor.WHITE, pieces, null, PieceColor.WHITE)
 
         assertNotNull(check)
     }
@@ -82,7 +82,7 @@ class ChessRulesTest {
         val rook = ChessPiece(PieceType.ROOK, PieceColor.BLACK, 5, 2)
         val pieces = listOf(king, rook)
 
-        val check = ChessRules.getCheckPosition(PieceColor.WHITE, pieces, null)
+        val check = ChessRules.getCheckPosition(PieceColor.WHITE, pieces, null, PieceColor.WHITE)
 
         assertNull(check)
     }
@@ -93,7 +93,7 @@ class ChessRulesTest {
         val king = ChessPiece(PieceType.KING, PieceColor.WHITE, 7, 7)
         val pieces = listOf(pawn, king)
 
-        val moves = ChessRules.generateMoves(pawn, pieces, null)
+        val moves = ChessRules.generateMoves(pawn, pieces, null, PieceColor.WHITE)
 
         assertTrue(moves.contains(0 to 4))
     }
@@ -105,7 +105,7 @@ class ChessRulesTest {
         val blackKing = ChessPiece(PieceType.KING, PieceColor.BLACK, 2, 2)
         val pieces = listOf(whiteKing, blackQueen, blackKing)
 
-        val isStalemate = ChessRules.isStalemate(PieceColor.WHITE, pieces, null)
+        val isStalemate = ChessRules.isStalemate(PieceColor.WHITE, pieces, null, PieceColor.WHITE)
 
         assertTrue(isStalemate)
     }
@@ -117,7 +117,7 @@ class ChessRulesTest {
         val blackKing = ChessPiece(PieceType.KING, PieceColor.BLACK, 2, 2)
         val pieces = listOf(whiteKing, blackQueen, blackKing)
 
-        val isCheckmate = ChessRules.isCheckmate(PieceColor.WHITE, pieces, null)
+        val isCheckmate = ChessRules.isCheckmate(PieceColor.WHITE, pieces, null, PieceColor.WHITE)
 
         assertTrue(isCheckmate)
     }
@@ -129,7 +129,7 @@ class ChessRulesTest {
         val enemyRook = ChessPiece(PieceType.ROOK, PieceColor.BLACK, 5, 5)
         val pieces = listOf(king, rook, enemyRook)
 
-        val moves = ChessRules.generateMoves(king, pieces, null)
+        val moves = ChessRules.generateMoves(king, pieces, null, PieceColor.WHITE)
 
         assertFalse(moves.contains(7 to 6))
     }

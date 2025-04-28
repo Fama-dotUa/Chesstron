@@ -3,12 +3,14 @@ package com.example.chesstron.presentation.viewmodel
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import com.example.chesstron.data.GameEvent
+import com.example.chesstron.data.GameMode
 import com.example.chesstron.data.model.ChessPiece
 import com.example.chesstron.data.model.ChessRules
 import com.example.chesstron.data.model.GameState
 import com.example.chesstron.data.model.PieceColor
 import com.example.chesstron.data.model.PieceType
 import com.example.chesstron.domain.usecase.initializePieces
+import com.example.chesstron.domain.usecase.initializePiecesForPlayer
 
 class ChessBoardViewModel : ViewModel() {
     var lastEvent = mutableStateOf<GameEvent?>(null)
@@ -16,6 +18,8 @@ class ChessBoardViewModel : ViewModel() {
 
     var gameState = mutableStateOf(GameState())
         private set
+    var gameMode: GameMode = GameMode.SINGLE_DEVICE
+    var playerColor: PieceColor = PieceColor.WHITE
 
     init {
         resetGame()
@@ -24,7 +28,7 @@ class ChessBoardViewModel : ViewModel() {
     fun selectPiece(piece: ChessPiece) {
         if (piece.color != gameState.value.currentTurn || gameState.value.gameOver) return
 
-        val moves = ChessRules.generateMoves(piece, gameState.value.pieces, gameState.value.enPassantTarget)
+        val moves = ChessRules.generateMoves(piece, gameState.value.pieces, gameState.value.enPassantTarget, playerColor)
 
         val filteredMoves = if (gameState.value.checkPosition != null) {
             moves.filter { move ->
@@ -130,8 +134,6 @@ class ChessBoardViewModel : ViewModel() {
         )
     }
 
-
-
     fun promotePawn(newType: PieceType) {
         val pawn = gameState.value.pendingPromotion ?: return
         val newPieces = gameState.value.pieces.toMutableList()
@@ -152,9 +154,9 @@ class ChessBoardViewModel : ViewModel() {
 
     private fun updateGameState() {
         val opponentColor = gameState.value.currentTurn.opposite()
-        val checkPos = ChessRules.getCheckPosition(opponentColor, gameState.value.pieces, gameState.value.enPassantTarget)
-        val mate = checkPos != null && ChessRules.isCheckmate(opponentColor, gameState.value.pieces, gameState.value.enPassantTarget)
-        val stalemate = !mate && ChessRules.isStalemate(opponentColor, gameState.value.pieces, gameState.value.enPassantTarget)
+        val checkPos = ChessRules.getCheckPosition(opponentColor, gameState.value.pieces, gameState.value.enPassantTarget, playerColor)
+        val mate = checkPos != null && ChessRules.isCheckmate(opponentColor, gameState.value.pieces, gameState.value.enPassantTarget, playerColor)
+        val stalemate = !mate && ChessRules.isStalemate(opponentColor, gameState.value.pieces, gameState.value.enPassantTarget, playerColor)
         if (checkPos != null && !mate) {
             lastEvent.value = GameEvent.Check
         }
@@ -173,9 +175,16 @@ class ChessBoardViewModel : ViewModel() {
         )
     }
 
-    fun resetGame() {
+    fun resetGame(gameMode: GameMode = GameMode.SINGLE_DEVICE, playerColor: PieceColor = PieceColor.WHITE) {
+        val pieces = if (gameMode == GameMode.VS_COMPUTER) {
+            initializePiecesForPlayer(playerColor)
+        } else {
+            initializePieces()
+        }
+        this.gameMode = gameMode
+        this.playerColor = playerColor
         gameState.value = GameState(
-            pieces = initializePieces(),
+            pieces = pieces,
             currentTurn = PieceColor.WHITE
         )
     }
@@ -194,9 +203,11 @@ class ChessBoardViewModel : ViewModel() {
         val king = snapshot.find { it.type == PieceType.KING && it.color == piece.color } ?: return false
 
         return snapshot.none { opponent ->
-            opponent.color != piece.color && ChessRules.isMoveValid(opponent, king.row, king.col, snapshot, gameState.value.enPassantTarget)
+            opponent.color != piece.color && ChessRules.isMoveValid(opponent, king.row, king.col, snapshot, gameState.value.enPassantTarget, playerColor)
         }
     }
+
+
 }
 
 fun PieceColor.opposite(): PieceColor {

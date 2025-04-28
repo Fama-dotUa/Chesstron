@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.times
 import com.example.chesstron.data.model.ChessPiece
+import com.example.chesstron.data.model.PieceColor
 
 
 @Composable
@@ -30,11 +31,13 @@ fun ChessPieceView(
     piece: ChessPiece,
     cellSize: Dp,
     isSelected: Boolean,
-    isAttackTarget: Boolean
+    isAttackTarget: Boolean,
+    playerColor: PieceColor
 ) {
 
-    val targetX = piece.col * cellSize
-    val targetY = piece.row * cellSize
+    val targetX = if (playerColor == PieceColor.WHITE) piece.col * cellSize else (7 - piece.col) * cellSize
+    val targetY = if (playerColor == PieceColor.WHITE) piece.row * cellSize else (7 - piece.row) * cellSize
+
 
     val animatedX by animateDpAsState(
         targetValue = targetX,

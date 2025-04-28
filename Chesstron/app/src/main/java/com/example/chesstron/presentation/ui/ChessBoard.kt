@@ -35,13 +35,17 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.chesstron.R
 import com.example.chesstron.SoundManager
 import com.example.chesstron.data.GameEvent
+import com.example.chesstron.data.GameMode
 import com.example.chesstron.data.model.PieceColor
 import com.example.chesstron.data.model.PieceType
 import com.example.chesstron.domain.usecase.ChessCell
 import com.example.chesstron.presentation.viewmodel.ChessBoardViewModel
 
 @Composable
-fun ChessBoard() {
+fun ChessBoard(
+    gameMode: GameMode = GameMode.SINGLE_DEVICE,
+    playerColor: PieceColor = PieceColor.WHITE
+) {
     val viewModel: ChessBoardViewModel = viewModel()
     val gameState = viewModel.gameState.value
 
@@ -50,6 +54,8 @@ fun ChessBoard() {
     val possibleMoves = gameState.possibleMoves
     val attackablePositions = gameState.attackablePositions
     val context = LocalContext.current
+    val rows = 0..7
+    val cols = 0..7
 
     LaunchedEffect(Unit) {
         SoundManager.initialize(context)
@@ -87,9 +93,10 @@ fun ChessBoard() {
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 Column {
-                    for (row in 0 until 8) {
+                    for (row in rows) {
                         Row {
-                            for (col in 0 until 8) {
+                            for (col in cols) {
+                                val (actualRow, actualCol) = adjustCoordinatesForPlayer(row, col, playerColor)
 
                                 val lastMove = viewModel.gameState.value.lastMove
                                 if (lastMove != null) {
@@ -100,15 +107,16 @@ fun ChessBoard() {
                                     row = row,
                                     col = col,
                                     cellSize = cellSize,
-                                    isHighlighted = possibleMoves.contains(row to col),
-                                    isInCheck = gameState.checkPosition == row to col,
-                                    isCheckmate = gameState.isMate && gameState.checkPosition == row to col,
-                                    isLastMoveFrom = lastMove?.first == (row to col),
-                                    isLastMoveTo = lastMove?.second == (row to col),
+                                    isLastMoveFrom = lastMove?.first == (actualRow to actualCol),
+                                    isLastMoveTo = lastMove?.second == (actualRow to actualCol),
+                                    isHighlighted = possibleMoves.contains(actualRow to actualCol),
+                                    isInCheck = gameState.checkPosition == (actualRow to actualCol),
+                                    isCheckmate = gameState.isMate && gameState.checkPosition == (actualRow to actualCol),
                                     onClick = {
                                         if (gameState.gameOver) return@ChessCell
 
-                                        val clickedPiece = viewModel.getClickedPiece(row, col)
+                                        val (actualRow, actualCol) = adjustCoordinatesForPlayer(row, col, playerColor)
+                                        val clickedPiece = viewModel.getClickedPiece(actualRow, actualCol) // <<< ВАЖЛИВО!
 
                                         when {
                                             selectedPiece == null && clickedPiece != null -> {
@@ -117,14 +125,15 @@ fun ChessBoard() {
                                             selectedPiece != null && clickedPiece?.color == selectedPiece.color -> {
                                                 viewModel.selectPiece(clickedPiece)
                                             }
-                                            selectedPiece != null && possibleMoves.contains(row to col) -> {
-                                                viewModel.moveSelectedTo(row, col)
+                                            selectedPiece != null && possibleMoves.contains(actualRow to actualCol) -> {
+                                                viewModel.moveSelectedTo(actualRow, actualCol)
                                             }
                                             else -> {
                                                 viewModel.deselectPiece()
                                             }
                                         }
                                     }
+
                                 )
                             }
                         }
@@ -137,7 +146,8 @@ fun ChessBoard() {
                             piece = piece,
                             cellSize = cellSize,
                             isSelected = selectedPiece == piece,
-                            isAttackTarget = attackablePositions.contains(piece.row to piece.col)
+                            isAttackTarget = attackablePositions.contains(piece.row to piece.col),
+                            playerColor = playerColor
                         )
                     }
                 }
@@ -239,3 +249,10 @@ fun getDrawableForPromotion(color: PieceColor, type: PieceType): Int {
     }
 }
 
+fun adjustCoordinatesForPlayer(row: Int, col: Int, playerColor: PieceColor): Pair<Int, Int> {
+    return if (playerColor == PieceColor.WHITE) {
+        row to col
+    } else {
+        (7 - row) to (7 - col)
+    }
+}

@@ -7,7 +7,8 @@ object ChessRules {
         toRow: Int,
         toCol: Int,
         pieces: List<ChessPiece>,
-        enPassantTarget: Pair<Int, Int>?
+        enPassantTarget: Pair<Int, Int>?,
+        playerColor: PieceColor
     ): Boolean {
         val fromRow = piece.row
         val fromCol = piece.col
@@ -19,7 +20,7 @@ object ChessRules {
 
         return when (piece.type) {
             PieceType.PAWN -> {
-                val dir = if (piece.color == PieceColor.WHITE) -1 else 1
+                val dir = getMoveDirection(piece, playerColor)
                 val startRow = if (piece.color == PieceColor.WHITE) 6 else 1
                 val oneStepForward = toRow == fromRow + dir && toCol == fromCol && target == null
                 val twoStepForward = fromRow == startRow &&
@@ -54,15 +55,36 @@ object ChessRules {
                 dr * dc == 2
             }
 
-            PieceType.KING -> kotlin.math.abs(fromRow - toRow) <= 1 && kotlin.math.abs(fromCol - toCol) <= 1
+            PieceType.KING -> {
+                val normalMove = kotlin.math.abs(fromRow - toRow) <= 1 && kotlin.math.abs(fromCol - toCol) <= 1
+                val castlingMove = fromRow == toRow && kotlin.math.abs(fromCol - toCol) == 2 &&
+                        canCastle(piece, toCol, pieces, playerColor)
+                normalMove || castlingMove
+            }
+
         }
     }
+    private fun canCastle(king: ChessPiece, toCol: Int, pieces: List<ChessPiece>, playerColor: PieceColor): Boolean {
+        if (king.hasMoved) return false
 
-    fun isPathClear(
+        val rookCol = if (toCol > king.col) 7 else 0
+        val rook = pieces.find { it.row == king.row && it.col == rookCol && it.type == PieceType.ROOK && it.color == king.color }
+            ?: return false
+
+        if (rook.hasMoved) return false
+
+        if (!isPathClear(king.row, king.col, rook.row, rook.col, pieces)) return false
+
+        val kingside = toCol > king.col
+        return isKingSafeDuringCastling(king, pieces, kingside, playerColor)
+    }
+
+    private fun isPathClear(
         fromRow: Int,
         fromCol: Int,
-        toRow: Int, toCol:
-        Int, pieces:
+        toRow: Int,
+        toCol: Int,
+        pieces:
         List<ChessPiece>
     ): Boolean {
         val rowStep = Integer.signum(toRow - fromRow)
@@ -83,38 +105,14 @@ object ChessRules {
     fun generateMoves(
         piece: ChessPiece,
         pieces: List<ChessPiece>,
-        enPassantTarget: Pair<Int, Int>?
+        enPassantTarget: Pair<Int, Int>?,
+        playerColor: PieceColor
     ): List<Pair<Int, Int>> {
         val allMoves = (0 until 8).flatMap { r ->
             (0 until 8).mapNotNull { c ->
-                if (isMoveValid(piece, r, c, pieces, enPassantTarget)) Pair(r, c) else null
+                if (isMoveValid(piece, r, c, pieces, enPassantTarget, playerColor)) Pair(r, c) else null
             }
         }.toMutableList()
-
-        // Рокіровка для короля
-        if (piece.type == PieceType.KING && !piece.hasMoved) {
-            val row = piece.row
-
-            val rookKingside = pieces.find { it.type == PieceType.ROOK && it.color == piece.color && it.row == row && it.col == 7 && !it.hasMoved }
-            if (rookKingside != null) {
-                val pathClear = (piece.col + 1 until 7).all { col ->
-                    pieces.none { it.row == row && it.col == col }
-                }
-                if (pathClear && isKingSafeDuringCastling(piece, pieces, true)) {
-                    allMoves.add(row to piece.col + 2)
-                }
-            }
-
-            val rookQueenside = pieces.find { it.type == PieceType.ROOK && it.color == piece.color && it.row == row && it.col == 0 && !it.hasMoved }
-            if (rookQueenside != null) {
-                val pathClear = (1 until piece.col).all { col ->
-                    pieces.none { it.row == row && it.col == col }
-                }
-                if (pathClear && isKingSafeDuringCastling(piece, pieces, false)) {
-                    allMoves.add(row to piece.col - 2)
-                }
-            }
-        }
 
         return allMoves.filter { (r, c) ->
             val snapshot = pieces.map { it.copy() }.toMutableList()
@@ -125,14 +123,15 @@ object ChessRules {
             moving.col = c
 
             val king = snapshot.find { it.type == PieceType.KING && it.color == piece.color }
-            king != null && snapshot.none { it.color != piece.color && isMoveValid(it, king.row, king.col, snapshot, enPassantTarget) }
+            king != null && snapshot.none { it.color != piece.color && isMoveValid(it, king.row, king.col, snapshot, enPassantTarget, playerColor) }
         }
     }
 
     private fun isKingSafeDuringCastling(
         king: ChessPiece,
         pieces: List<ChessPiece>,
-        kingside: Boolean
+        kingside: Boolean,
+        playerColor: PieceColor
     ): Boolean {
         val snapshot = pieces.map { it.copy() }.toMutableList()
         val kingCopy = snapshot.find { it.type == PieceType.KING && it.color == king.color } ?: return false
@@ -142,18 +141,19 @@ object ChessRules {
 
         return colsToCheck.all { col ->
             kingCopy.col = col
-            snapshot.none { it.color != king.color && isMoveValid(it, kingCopy.row, kingCopy.col, snapshot, null) }
+            snapshot.none { it.color != king.color && isMoveValid(it, kingCopy.row, kingCopy.col, snapshot, null, playerColor) }
         }
     }
 
     fun getCheckPosition(
         color: PieceColor,
         pieces: List<ChessPiece>,
-        enPassantTarget: Pair<Int, Int>?
+        enPassantTarget: Pair<Int, Int>?,
+        playerColor: PieceColor
     ): Pair<Int, Int>? {
         val king = pieces.find { it.type == PieceType.KING && it.color == color } ?: return null
         val enemies = pieces.filter { it.color != color }
-        return if (enemies.any { isMoveValid(it, king.row, king.col, pieces, enPassantTarget) }) {
+        return if (enemies.any { isMoveValid(it, king.row, king.col, pieces, enPassantTarget, playerColor) }) {
             king.row to king.col
         } else null
     }
@@ -161,13 +161,14 @@ object ChessRules {
     fun isCheckmate(
         color: PieceColor,
         pieces: List<ChessPiece>,
-        enPassantTarget: Pair<Int, Int>?
+        enPassantTarget: Pair<Int, Int>?,
+        playerColor: PieceColor
     ): Boolean {
         val allies = pieces.filter { it.color == color }
         for (piece in allies) {
             val moves = (0 until 8).flatMap { r ->
                 (0 until 8).mapNotNull { c ->
-                    if (isMoveValid(piece, r, c, pieces, enPassantTarget)) Pair(r, c) else null
+                    if (isMoveValid(piece, r, c, pieces, enPassantTarget, playerColor)) Pair(r, c) else null
                 }
             }
             for ((r, c) in moves) {
@@ -178,7 +179,7 @@ object ChessRules {
                 testPiece.col = c
 
                 val king = snapshot.find { it.type == PieceType.KING && it.color == color } ?: continue
-                if (snapshot.none { it.color != color && isMoveValid(it, king.row, king.col, snapshot, enPassantTarget) }) {
+                if (snapshot.none { it.color != color && isMoveValid(it, king.row, king.col, snapshot, enPassantTarget, playerColor) }) {
                     return false
                 }
             }
@@ -190,11 +191,21 @@ object ChessRules {
     fun isStalemate(
         color: PieceColor,
         pieces: List<ChessPiece>,
-        enPassantTarget: Pair<Int, Int>?
+        enPassantTarget: Pair<Int, Int>?,
+        playerColor: PieceColor
     ): Boolean {
         val allies = pieces.filter { it.color == color }
-        return allies.all { generateMoves(it, pieces, enPassantTarget).isEmpty() } &&
-                getCheckPosition(color, pieces, enPassantTarget) == null
+        return allies.all { generateMoves(it, pieces, enPassantTarget, playerColor).isEmpty() } &&
+                getCheckPosition(color, pieces, enPassantTarget, playerColor) == null
+    }
+
+
+    private fun getMoveDirection(piece: ChessPiece, playerColor: PieceColor): Int {
+        return if (piece.color == playerColor) {
+            if (playerColor == PieceColor.WHITE) -1 else 1
+        } else {
+            if (playerColor == PieceColor.WHITE) 1 else -1
+        }
     }
 }
 
