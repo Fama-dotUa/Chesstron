@@ -1,13 +1,13 @@
 package com.example.chesstron.presentation.ui
 
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.absoluteOffset
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,9 +19,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.times
 import com.example.chesstron.data.model.ChessPiece
+
 
 @Composable
 fun ChessPieceView(
@@ -30,6 +32,22 @@ fun ChessPieceView(
     isSelected: Boolean,
     isAttackTarget: Boolean
 ) {
+
+    val targetX = piece.col * cellSize
+    val targetY = piece.row * cellSize
+
+    val animatedX by animateDpAsState(
+        targetValue = targetX,
+        animationSpec = tween(durationMillis = 300),
+        label = "AnimatedX"
+    )
+
+    val animatedY by animateDpAsState(
+        targetValue = targetY,
+        animationSpec = tween(durationMillis = 300),
+        label = "AnimatedY"
+    )
+
     val scale by animateFloatAsState(
         targetValue = if (isSelected) 1.15f else 1f,
         animationSpec = tween(durationMillis = 200),
@@ -38,35 +56,35 @@ fun ChessPieceView(
 
     Box(
         modifier = Modifier
-            .absoluteOffset(
-                x = piece.col * cellSize,
-                y = piece.row * cellSize
-            )
+            .offset {
+                IntOffset(
+                    animatedX.roundToPx(),
+                    animatedY.roundToPx()
+                )
+            }
             .size(cellSize)
             .graphicsLayer {
-                scaleX = if (isSelected) 1.15f else 1f
-                scaleY = if (isSelected) 1.15f else 1f
+                scaleX = scale
+                scaleY = scale
                 translationY = if (isSelected) -8f else 0f
             }
     ) {
         if (isAttackTarget) {
-            // Розмите світіння під фігурою
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(6.dp)
-                    .background(Color(0x33FF0000), shape = RoundedCornerShape(50)) // зовнішній прозорий ореол
+                    .background(Color(0x33FF0000), shape = RoundedCornerShape(50))
                     .align(Alignment.Center)
             )
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(14.dp)
-                    .background(Color(0x66FF0000), shape = RoundedCornerShape(50)) // внутрішній концентрований шар
+                    .background(Color(0x66FF0000), shape = RoundedCornerShape(50))
                     .align(Alignment.Center)
             )
         }
-
 
         Image(
             painter = painterResource(id = getDrawableForPiece(piece)),

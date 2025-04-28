@@ -165,10 +165,14 @@ object ChessRules {
     ): Boolean {
         val allies = pieces.filter { it.color == color }
         for (piece in allies) {
-            val moves = generateMoves(piece, pieces, enPassantTarget)
+            val moves = (0 until 8).flatMap { r ->
+                (0 until 8).mapNotNull { c ->
+                    if (isMoveValid(piece, r, c, pieces, enPassantTarget)) Pair(r, c) else null
+                }
+            }
             for ((r, c) in moves) {
                 val snapshot = pieces.map { it.copy() }.toMutableList()
-                val testPiece = snapshot.find { it == piece } ?: continue
+                val testPiece = snapshot.find { it.row == piece.row && it.col == piece.col && it.color == piece.color } ?: continue
                 snapshot.removeAll { it.row == r && it.col == c && it.color != piece.color }
                 testPiece.row = r
                 testPiece.col = c
@@ -181,6 +185,7 @@ object ChessRules {
         }
         return true
     }
+
 
     fun isStalemate(
         color: PieceColor,

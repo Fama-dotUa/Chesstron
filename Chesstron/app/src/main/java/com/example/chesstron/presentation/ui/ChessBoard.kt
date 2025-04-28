@@ -19,6 +19,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -108,14 +109,17 @@ fun ChessBoard() {
                     }
                 }
 
-                pieces.forEach { piece ->
-                    ChessPieceView(
-                        piece = piece,
-                        cellSize = cellSize,
-                        isSelected = selectedPiece == piece,
-                        isAttackTarget = attackablePositions.contains(piece.row to piece.col)
-                    )
+                pieces.filter { it.row in 0..7 && it.col in 0..7 }.forEach { piece ->
+                    key(piece) {
+                        ChessPieceView(
+                            piece = piece,
+                            cellSize = cellSize,
+                            isSelected = selectedPiece == piece,
+                            isAttackTarget = attackablePositions.contains(piece.row to piece.col)
+                        )
+                    }
                 }
+
 
                 gameState.pendingPromotion?.let { pawn ->
                     val promotionWidth = cellSize * 4 + 12.dp

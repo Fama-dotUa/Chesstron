@@ -52,50 +52,60 @@ class ChessBoardViewModel : ViewModel() {
 
         val startRow = piece.row
         val startCol = piece.col
-        val newPieces = gameState.value.pieces.toMutableList()
-
+        // Рокіровка
         if (piece.type == PieceType.KING && kotlin.math.abs(col - startCol) == 2) {
             val rookCol = if (col > startCol) 7 else 0
             val newRookCol = if (col > startCol) 5 else 3
-            val rook = newPieces.find { it.row == startRow && it.col == rookCol && it.color == piece.color }
+            val rook = gameState.value.pieces.find { it.row == startRow && it.col == rookCol && it.color == piece.color }
             rook?.let {
-                newPieces.remove(it)
-                newPieces.add(it.copy(col = newRookCol, hasMoved = true))
+                it.col = newRookCol
+                it.hasMoved = true
             }
         }
 
         val enPassantTarget = gameState.value.enPassantTarget
+
+        // Взяття на проході
         if (piece.type == PieceType.PAWN && enPassantTarget == row to col) {
             val capturedRow = if (piece.color == PieceColor.WHITE) row + 1 else row - 1
-            newPieces.removeAll { it.row == capturedRow && it.col == col && it.color != piece.color }
-        } else {
-            newPieces.removeAll { it.row == row && it.col == col && it.color != piece.color }
+            gameState.value.pieces.find { it.row == capturedRow && it.col == col && it.color != piece.color }?.apply {
+                this.row = -1
+                this.col = -1
+            }
+        }
+        // Звичайне взяття
+        else {
+            gameState.value.pieces.find { it.row == row && it.col == col && it.color != piece.color }?.apply {
+                this.row = -1
+                this.col = -1
+            }
         }
 
-        newPieces.remove(piece)
-        val movedPiece = piece.copy(row = row, col = col, hasMoved = true)
-        newPieces.add(movedPiece)
+        // Переміщення фігури
+        piece.row = row
+        piece.col = col
+        piece.hasMoved = true
 
+        // Промоція пішака
         val promotionRow = if (piece.color == PieceColor.WHITE) 0 else 7
-        if (movedPiece.type == PieceType.PAWN && movedPiece.row == promotionRow) {
+        if (piece.type == PieceType.PAWN && piece.row == promotionRow) {
             gameState.value = gameState.value.copy(
-                pieces = newPieces,
-                pendingPromotion = movedPiece,
+                pendingPromotion = piece,
                 selectedPiece = null,
                 possibleMoves = emptyList(),
-                attackablePositions = emptyList(),
-
+                attackablePositions = emptyList()
             )
             return
         }
 
+        // Оновлення en passant
         val newEnPassantTarget = if (piece.type == PieceType.PAWN && kotlin.math.abs(row - startRow) == 2) {
             val dir = if (piece.color == PieceColor.WHITE) -1 else 1
             Pair(startRow + dir, startCol)
         } else null
 
+        // Оновлюємо стан гри
         gameState.value = gameState.value.copy(
-            pieces = newPieces,
             selectedPiece = null,
             possibleMoves = emptyList(),
             attackablePositions = emptyList(),
@@ -104,24 +114,20 @@ class ChessBoardViewModel : ViewModel() {
         )
 
         updateGameState()
+
         gameState.value = gameState.value.copy(
             currentTurn = gameState.value.currentTurn.opposite()
         )
     }
 
+
+
     fun promotePawn(newType: PieceType) {
         val pawn = gameState.value.pendingPromotion ?: return
         val newPieces = gameState.value.pieces.toMutableList()
-        newPieces.remove(pawn)
-        newPieces.add(
-            ChessPiece(
-                type = newType,
-                color = pawn.color,
-                row = pawn.row,
-                col = pawn.col,
-                hasMoved = true
-            )
-        )
+        pawn.type = newType
+        pawn.hasMoved = true
+
 
         gameState.value = gameState.value.copy(
             pieces = newPieces,
