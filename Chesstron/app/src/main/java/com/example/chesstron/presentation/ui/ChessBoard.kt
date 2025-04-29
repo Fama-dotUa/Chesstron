@@ -1,5 +1,6 @@
 package com.example.chesstron.presentation.ui
 
+import android.annotation.SuppressLint
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -41,6 +42,7 @@ import com.example.chesstron.data.model.PieceType
 import com.example.chesstron.domain.usecase.ChessCell
 import com.example.chesstron.presentation.viewmodel.ChessBoardViewModel
 
+@SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
 fun ChessBoard(
     gameMode: GameMode = GameMode.SINGLE_DEVICE,
@@ -99,9 +101,6 @@ fun ChessBoard(
                                 val (actualRow, actualCol) = adjustCoordinatesForPlayer(row, col, playerColor)
 
                                 val lastMove = viewModel.gameState.value.lastMove
-                                if (lastMove != null) {
-                                    println("Last move: from ${lastMove.first} to ${lastMove.second}")
-                                }
 
                                 ChessCell(
                                     row = row,

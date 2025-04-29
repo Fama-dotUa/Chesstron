@@ -1,10 +1,12 @@
 package com.example.chesstron.presentation.viewmodel
 
-import android.R.attr.type
 import android.os.Build
+import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.example.chesstron.bots.BotEngine
 import com.example.chesstron.data.GameEvent
 import com.example.chesstron.data.GameMode
 import com.example.chesstron.data.model.ChessPiece
@@ -15,7 +17,7 @@ import com.example.chesstron.data.model.PieceColor
 import com.example.chesstron.data.model.PieceType
 import com.example.chesstron.domain.usecase.initializePieces
 import com.example.chesstron.domain.usecase.initializePiecesForPlayer
-
+import kotlinx.coroutines.*
 
 class ChessBoardViewModel : ViewModel() {
     var lastEvent = mutableStateOf<GameEvent?>(null)
@@ -32,15 +34,14 @@ class ChessBoardViewModel : ViewModel() {
         resetGame()
     }
 
-    fun selectPiece(piece: ChessPiece) {
+    fun selectPiece(piece: ChessPiece, bypassCheck: Boolean = false) {
+        if (!bypassCheck && gameMode == GameMode.VS_COMPUTER && piece.color != playerColor) return
         if (piece.color != gameState.value.currentTurn || gameState.value.gameOver) return
 
         val moves = ChessRules.generateMoves(piece, gameState.value.pieces, gameState.value.enPassantTarget, playerColor)
 
         val filteredMoves = if (gameState.value.checkPosition != null) {
-            moves.filter { move ->
-                isMoveSafe(piece, move.first, move.second)
-            }
+            moves.filter { move -> isMoveSafe(piece, move.first, move.second) }
         } else moves
 
         gameState.value = gameState.value.copy(
@@ -51,6 +52,7 @@ class ChessBoardViewModel : ViewModel() {
             }
         )
     }
+
 
     fun deselectPiece() {
         gameState.value = gameState.value.copy(
@@ -126,13 +128,20 @@ class ChessBoardViewModel : ViewModel() {
         // Промоція пішака
         val promotionRow = if (piece.color == PieceColor.WHITE) 0 else 7
         if (piece.type == PieceType.PAWN && piece.row == promotionRow) {
-            gameState.value = gameState.value.copy(
-                pendingPromotion = piece,
-                selectedPiece = null,
-                possibleMoves = emptyList(),
-                attackablePositions = emptyList()
-            )
-            return
+            if (gameMode == GameMode.VS_COMPUTER && piece.color != playerColor) {
+                // Автопромоція бота
+                piece.type = PieceType.QUEEN
+                piece.hasMoved = true
+            } else {
+                // Звичайна промоція (гравець вибирає)
+                gameState.value = gameState.value.copy(
+                    pendingPromotion = piece,
+                    selectedPiece = null,
+                    possibleMoves = emptyList(),
+                    attackablePositions = emptyList()
+                )
+                return
+            }
         }
 
         // Оновлення en passant
@@ -160,33 +169,64 @@ class ChessBoardViewModel : ViewModel() {
         gameState.value = gameState.value.copy(
             currentTurn = gameState.value.currentTurn.opposite()
         )
+
+        // Після зміни currentTurn
+        val isPlayerMove = gameState.value.currentTurn == playerColor
+        if (!isPlayerMove && gameMode == GameMode.VS_COMPUTER) {
+            makeBotMove()
+        }
+
+
     }
 
     fun promotePawn(newType: PieceType) {
-
         val pawn = gameState.value.pendingPromotion ?: return
-        val newPieces = gameState.value.pieces.toMutableList()
-        pawn.type = newType
-        pawn.hasMoved = true
 
+        // Створюємо нову фігуру замість пішака
+        val promotedPiece = ChessPiece(
+            type = newType,
+            color = pawn.color,
+            initialRow = pawn.row,
+            initialCol = pawn.col,
+            hasMoved = true
+        ).apply {
+            row = pawn.row
+            col = pawn.col
+        }
+        // Оновлюємо запис в історії, якщо треба
         val lastMove = moveHistory.lastOrNull()
-        if (lastMove != null && pawn.type == PieceType.PAWN) {
+        if (lastMove != null) {
             moveHistory[moveHistory.lastIndex] = lastMove.copy(
                 isPromotion = true,
                 promotionType = newType
             )
         }
 
+        // Створюємо новий список фігур, замінюючи пішака на нову фігуру
+        val updatedPieces = gameState.value.pieces.map {
+            if (it === pawn) promotedPiece else it
+        }
+
+        // Оновлюємо GameState
         gameState.value = gameState.value.copy(
-            pieces = newPieces,
+            pieces = updatedPieces,
             pendingPromotion = null
         )
 
         updateGameState()
+
         gameState.value = gameState.value.copy(
             currentTurn = gameState.value.currentTurn.opposite()
         )
+
+        val isPlayerMove = gameState.value.currentTurn == playerColor
+        if (!isPlayerMove && gameMode == GameMode.VS_COMPUTER) {
+            makeBotMove()
+        }
     }
+
+
+
 
     private fun updateGameState() {
         val opponentColor = gameState.value.currentTurn.opposite()
@@ -233,6 +273,11 @@ class ChessBoardViewModel : ViewModel() {
             pieces = pieces,
             currentTurn = PieceColor.WHITE
         )
+        // Якщо гравець обрав чорних, то бот починає перший
+        if (gameMode == GameMode.VS_COMPUTER && playerColor == PieceColor.BLACK) {
+            makeBotMove()
+        }
+
     }
 
     fun getClickedPiece(row: Int, col: Int): ChessPiece? =
@@ -262,8 +307,8 @@ class ChessBoardViewModel : ViewModel() {
 
             newPieces.add(
                 ChessPiece(
-                    type = lastMove.capturedPieceType!!,
-                    color = lastMove.capturedPieceColor!!,
+                    type = lastMove.capturedPieceType,
+                    color = lastMove.capturedPieceColor,
                     initialRow = lastMove.toRow,
                     initialCol = lastMove.toCol,
                     hasMoved = false
@@ -302,6 +347,36 @@ class ChessBoardViewModel : ViewModel() {
         )
     }
 
+    fun makeBotMove() {
+        viewModelScope.launch {
+            delay(500L) // 500 мс затримки — можеш змінити як хочеш
+
+            if (gameState.value.gameOver) return@launch
+            if (gameMode != GameMode.VS_COMPUTER) return@launch
+            if (gameState.value.currentTurn != playerColor.opposite()) return@launch
+
+
+            val move = BotEngine.chooseMove(
+                pieces = gameState.value.pieces,
+                botColor = playerColor.opposite(),
+                enPassantTarget = gameState.value.enPassantTarget,
+                playerColor = playerColor
+            )
+            if (move == null) return@launch
+
+            val (from, to) = move
+
+            val piece = getClickedPiece(from.first, from.second)
+            if (piece == null) {
+                return@launch
+            }
+            move?.let { (from, to) ->
+                val piece = getClickedPiece(from.first, from.second) ?: return@launch
+                selectPiece(piece, bypassCheck = true)
+                moveSelectedTo(to.first, to.second)
+            }
+        }
+    }
 
     private fun isMoveSafe(piece: ChessPiece, toRow: Int, toCol: Int): Boolean {
         val snapshot = gameState.value.pieces.map { it.copy() }.toMutableList()
