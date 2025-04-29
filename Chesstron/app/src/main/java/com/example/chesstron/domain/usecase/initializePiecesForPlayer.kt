@@ -11,9 +11,8 @@ fun initializePiecesForPlayer(playerColor: PieceColor): List<ChessPiece> {
     } else {
         pieces.map { piece ->
             piece.copy(
-                row = 7 - piece.row, // Інвертуємо тільки рядок!
-                col = piece.col,     // Колонку НЕ чіпаємо!
-                color = piece.color.opposite()
+                row = 7 - piece.row,
+                col = 7 - piece.col
             )
         }
     }

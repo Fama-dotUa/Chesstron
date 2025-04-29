@@ -32,9 +32,24 @@ class ChessBoardActivity : ComponentActivity() {
 
         val gameMode = intent?.getStringExtra("game_mode")?.let { GameMode.valueOf(it) } ?: GameMode.SINGLE_DEVICE
         val playerColor = intent?.getStringExtra("player_color")?.let { PieceColor.valueOf(it) } ?: PieceColor.WHITE
+        val action = intent?.getStringExtra("online_action")
+        val lobbyName = intent?.getStringExtra("lobby_name") ?: ""
+        val lobbyPassword = intent?.getStringExtra("lobby_password")
+        val gameId = intent?.getStringExtra("game_id") // якщо треба буде
 
         setContent {
             val viewModel: ChessBoardViewModel = viewModel()
+
+            if (gameMode == GameMode.ONLINE) {
+                when (action) {
+                    "create" -> {
+                        viewModel.createLobby(lobbyName, lobbyPassword, playerColor)
+                    }
+                    "join" -> {
+                        viewModel.joinOnlineGame(gameId!!, playerColor)
+                    }
+                }
+            }
 
             ChesstronTheme {
                 Scaffold(

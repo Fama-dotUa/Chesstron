@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "487359373141",
+    "project_id": "chesstrononline",
+    "storage_bucket": "chesstrononline.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:487359373141:android:b7e9287155446f4e3259dc",
+        "android_client_info": {
+          "package_name": "com.example.chesstron"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAf5qWZ5Qv17Ls1BaY6LYU4Rzb_MKu53I4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

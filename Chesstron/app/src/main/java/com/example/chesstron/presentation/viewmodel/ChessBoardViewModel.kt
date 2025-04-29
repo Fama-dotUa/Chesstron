@@ -11,13 +11,19 @@ import com.example.chesstron.data.GameEvent
 import com.example.chesstron.data.GameMode
 import com.example.chesstron.data.model.ChessPiece
 import com.example.chesstron.data.model.ChessRules
+import com.example.chesstron.data.model.GameSession
 import com.example.chesstron.data.model.GameState
 import com.example.chesstron.data.model.MoveRecord
 import com.example.chesstron.data.model.PieceColor
 import com.example.chesstron.data.model.PieceType
 import com.example.chesstron.domain.usecase.initializePieces
 import com.example.chesstron.domain.usecase.initializePiecesForPlayer
+import com.google.firebase.firestore.FieldValue
 import kotlinx.coroutines.*
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.tasks.await
+
+
 
 class ChessBoardViewModel : ViewModel() {
     var lastEvent = mutableStateOf<GameEvent?>(null)
@@ -28,15 +34,22 @@ class ChessBoardViewModel : ViewModel() {
     var gameMode: GameMode = GameMode.SINGLE_DEVICE
     var playerColor: PieceColor = PieceColor.WHITE
     val moveHistory = mutableListOf<MoveRecord>()
-
+    private val firestore = FirebaseFirestore.getInstance()
+    var currentGameId: String? = null
+    private var skipNextSnapshot = false
+    private var suppressOnlineSync = false
 
     init {
         resetGame()
     }
 
     fun selectPiece(piece: ChessPiece, bypassCheck: Boolean = false) {
-        if (!bypassCheck && gameMode == GameMode.VS_COMPUTER && piece.color != playerColor) return
-        if (piece.color != gameState.value.currentTurn || gameState.value.gameOver) return
+        if (!bypassCheck) {
+            if (gameMode == GameMode.VS_COMPUTER && piece.color != playerColor) return
+            if (gameMode == GameMode.ONLINE && piece.color != playerColor) return
+            if (gameMode == GameMode.ONLINE && gameState.value.currentTurn != playerColor) return
+            if (piece.color != gameState.value.currentTurn || gameState.value.gameOver) return
+        }
 
         val moves = ChessRules.generateMoves(piece, gameState.value.pieces, gameState.value.enPassantTarget, playerColor)
 
@@ -52,7 +65,6 @@ class ChessBoardViewModel : ViewModel() {
             }
         )
     }
-
 
     fun deselectPiece() {
         gameState.value = gameState.value.copy(
@@ -125,6 +137,11 @@ class ChessBoardViewModel : ViewModel() {
         piece.col = col
         piece.hasMoved = true
 
+        if (gameMode == GameMode.ONLINE && !suppressOnlineSync) {
+            sendMoveOnline(startRow to startCol, row to col)
+        }
+
+
         // Промоція пішака
         val promotionRow = if (piece.color == PieceColor.WHITE) 0 else 7
         if (piece.type == PieceType.PAWN && piece.row == promotionRow) {
@@ -175,8 +192,6 @@ class ChessBoardViewModel : ViewModel() {
         if (!isPlayerMove && gameMode == GameMode.VS_COMPUTER) {
             makeBotMove()
         }
-
-
     }
 
     fun promotePawn(newType: PieceType) {
@@ -224,9 +239,6 @@ class ChessBoardViewModel : ViewModel() {
             makeBotMove()
         }
     }
-
-
-
 
     private fun updateGameState() {
         val opponentColor = gameState.value.currentTurn.opposite()
@@ -364,13 +376,13 @@ class ChessBoardViewModel : ViewModel() {
             )
             if (move == null) return@launch
 
-            val (from, to) = move
+            val (from, _) = move
 
             val piece = getClickedPiece(from.first, from.second)
             if (piece == null) {
                 return@launch
             }
-            move?.let { (from, to) ->
+            move.let { (from, to) ->
                 val piece = getClickedPiece(from.first, from.second) ?: return@launch
                 selectPiece(piece, bypassCheck = true)
                 moveSelectedTo(to.first, to.second)
@@ -392,6 +404,188 @@ class ChessBoardViewModel : ViewModel() {
             opponent.color != piece.color && ChessRules.isMoveValid(opponent, king.row, king.col, snapshot, gameState.value.enPassantTarget, playerColor)
         }
     }
+
+    fun createOnlineGame(playerColor: PieceColor) {
+        viewModelScope.launch {
+            resetGame(GameMode.ONLINE, playerColor)
+
+            val gameId = firestore.collection("games").document().id
+            val session = GameSession(
+                gameId = gameId,
+                playerWhiteId = if (playerColor == PieceColor.WHITE) "host" else "",
+                playerBlackId = if (playerColor == PieceColor.BLACK) "host" else "",
+                turn = "white",
+                status = "waiting"
+            )
+
+            firestore.collection("games").document(gameId).set(session).await()
+            currentGameId = gameId
+
+            listenToOnlineGame(gameId)
+            Log.d("FIREBASE", "Game created with ID: $gameId")
+        }
+    }
+
+    fun joinOnlineGame(gameId: String, playerColor: PieceColor) {
+        viewModelScope.launch {
+            resetGame(GameMode.ONLINE, playerColor)
+
+            firestore.collection("games").document(gameId)
+                .update(
+                    if (playerColor == PieceColor.WHITE) "playerWhiteId" else "playerBlackId",
+                    "guest",
+                    "status",
+                    "playing"
+                ).await()
+            currentGameId = gameId
+
+            listenToOnlineGame(gameId)
+            Log.d("FIREBASE", "Joined game with ID: $gameId")
+        }
+    }
+
+    private fun listenToOnlineGame(gameId: String) {
+        firestore.collection("games").document(gameId)
+            .addSnapshotListener { snapshot, error ->
+                if (skipNextSnapshot) {
+                    Log.d("FIREBASE", "Пропускаємо свій Snapshot")
+                    skipNextSnapshot = false
+                    return@addSnapshotListener
+                }
+
+                if (error != null || snapshot == null || !snapshot.exists()) {
+                    Log.e("FIREBASE", "Помилка слухання гри: ${error?.message}")
+                    return@addSnapshotListener
+                }
+
+                Log.d("FIREBASE", "Snapshot received!")
+
+                val session = snapshot.toObject(GameSession::class.java) ?: return@addSnapshotListener
+                Log.d("FIREBASE", "Ходи в базі: ${session.moves}")
+
+                val movesFromFirestore = session.moves
+
+                if (movesFromFirestore.size > moveHistory.size) {
+                    val moveEntry = movesFromFirestore.last() as? Map<*, *> ?: return@addSnapshotListener
+
+                    val moveString = moveEntry["move"] as? String ?: return@addSnapshotListener
+                    val byPlayer = moveEntry["by"] as? String ?: return@addSnapshotListener
+
+                    if (byPlayer == playerColor.name.lowercase()) {
+                        Log.d("FIREBASE", "Пропускаємо свій хід: $moveString")
+                        return@addSnapshotListener
+                    }
+
+                    if (moveString.length == 4) {
+                        val fromRow = moveString[0].digitToInt()
+                        val fromCol = moveString[1].digitToInt()
+                        val toRow = moveString[2].digitToInt()
+                        val toCol = moveString[3].digitToInt()
+
+                        val adjustedFromRow = fromRow
+                        val adjustedFromCol = fromCol
+                        val adjustedToRow = toRow
+                        val adjustedToCol = toCol
+
+                        val expectedColor = if (byPlayer == "white") PieceColor.WHITE else PieceColor.BLACK
+
+                        Log.d("FIREBASE", "Очікуємо фігуру на ($adjustedFromRow, $adjustedFromCol), color = $expectedColor")
+                        Log.d("FIREBASE", "Очікуємо фігуру на ($adjustedFromRow, $adjustedFromCol) кольору $expectedColor")
+
+                        val piece = gameState.value.pieces.find {
+                            it.row == adjustedFromRow &&
+                                    it.col == adjustedFromCol &&
+                                    it.color == expectedColor
+                        } ?: run {
+                            Log.e("FIREBASE", "Фігура не знайдена! Немає piece(row=$adjustedFromRow, col=$adjustedFromCol, color=$expectedColor)")
+
+                            return@addSnapshotListener
+                        }
+
+                        suppressOnlineSync = true
+                        selectPiece(piece, bypassCheck = true)
+                        moveSelectedTo(adjustedToRow, adjustedToCol)
+                        suppressOnlineSync = false
+
+                        Log.d("FIREBASE", "Застосовано хід супротивника: $moveString")
+                    }
+                }
+            }
+    }
+
+    fun sendMoveOnline(from: Pair<Int, Int>, to: Pair<Int, Int>) {
+        val moveString = "${from.first}${from.second}${to.first}${to.second}"
+        Log.d("FIREBASE", "Відправляємо хід: $moveString")
+
+        val moveData = mapOf(
+            "move" to moveString,
+            "by" to playerColor.name.lowercase()
+        )
+
+        currentGameId?.let { id ->
+            skipNextSnapshot = true
+            firestore.collection("games").document(id)
+                .update(
+                    "moves", FieldValue.arrayUnion(moveData),
+                    "turn", if (gameState.value.currentTurn == PieceColor.WHITE) "black" else "white"
+                )
+        }
+    }
+
+    fun createLobby(name: String, password: String?, playerColor: PieceColor) {
+        viewModelScope.launch {
+            resetGame(GameMode.ONLINE, playerColor)
+            val gameId = firestore.collection("games").document().id
+
+            val session = GameSession(
+                gameId = gameId,
+                name = name,
+                password = password,
+                playerWhiteId = if (playerColor == PieceColor.WHITE) "host" else "",
+                playerBlackId = if (playerColor == PieceColor.BLACK) "host" else "",
+                turn = "white",
+                status = "waiting",
+                createdAt = System.currentTimeMillis()
+            )
+
+            firestore.collection("games").document(gameId).set(session).await()
+            currentGameId = gameId
+            listenToOnlineGame(gameId)
+            Log.d("FIREBASE", "Лобі створено: $name ($gameId)")
+        }
+    }
+
+    fun fetchAvailableLobbies(onResult: (List<GameSession>) -> Unit) {
+        firestore.collection("games")
+            .whereEqualTo("status", "waiting")
+            .orderBy("createdAt")
+            .get()
+            .addOnSuccessListener { snapshot ->
+                val lobbies = snapshot.documents.mapNotNull { it.toObject(GameSession::class.java) }
+                onResult(lobbies)
+            }
+            .addOnFailureListener {
+                Log.e("FIREBASE", "Не вдалося завантажити лобі: ${it.message}")
+            }
+    }
+
+    fun joinLobby(gameSession: GameSession) {
+        viewModelScope.launch {
+            resetGame(GameMode.ONLINE, PieceColor.BLACK)
+
+            firestore.collection("games").document(gameSession.gameId)
+                .update(
+                    "playerBlackId", "guest",
+                    "status", "playing"
+                ).await()
+
+            currentGameId = gameSession.gameId
+            listenToOnlineGame(gameSession.gameId)
+            Log.d("FIREBASE", "Приєднано до гри: ${gameSession.name}")
+        }
+    }
+
+
 }
 
 fun PieceColor.opposite(): PieceColor {

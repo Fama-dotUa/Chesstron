@@ -13,10 +13,12 @@ import androidx.compose.ui.unit.dp
 import com.example.chesstron.ui.theme.ChesstronTheme
 import com.example.chesstron.data.model.PieceColor
 import com.example.chesstron.data.GameMode
+import com.google.firebase.FirebaseApp
 
 class MainMenuActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        FirebaseApp.initializeApp(this) // 🔥 ініціалізує Firebase
         setContent {
             ChesstronTheme {
                 Surface(
@@ -33,6 +35,9 @@ class MainMenuActivity : ComponentActivity() {
     fun MainMenuContent() {
         var showDialog by remember { mutableStateOf(false) }
         var showColorChoiceDialog by remember { mutableStateOf(false) }
+        var showGameIdInputDialog by remember { mutableStateOf(false) }
+        var gameIdInput by remember { mutableStateOf("") }
+
         Box(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
@@ -42,12 +47,6 @@ class MainMenuActivity : ComponentActivity() {
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Button(
-                    onClick = { showDialog = true },
-                    modifier = Modifier.width(200.dp)
-                ) {
-                    Text("Нова гра")
-                }
-                Button(
                     onClick = {
                         // Тут поки що можна зробити тост "Функція в розробці"
                     },
@@ -55,6 +54,34 @@ class MainMenuActivity : ComponentActivity() {
                 ) {
                     Text("Продовжити")
                 }
+                Button(
+                    onClick = { showDialog = true },
+                    modifier = Modifier.width(200.dp)
+                ) {
+                    Text("Грати локально")
+                }
+
+                Button(
+                    onClick = {
+                        val intent = Intent(this@MainMenuActivity, CreateLobbyActivity::class.java).apply {
+                            putExtra("game_mode", GameMode.ONLINE.name)
+                            putExtra("player_color", PieceColor.WHITE.name)
+                            putExtra("online_action", "create")
+                        }
+                        startActivity(intent)
+                    },
+                    modifier = Modifier.width(200.dp)
+                ) {
+                    Text("Створити онлайн-гру")
+                }
+
+                Button(onClick = {
+                    val intent = Intent(this@MainMenuActivity, LobbyListActivity::class.java)
+                    startActivity(intent)
+                }) {
+                    Text("Приєднатися до гри")
+                }
+
             }
         }
 
@@ -117,7 +144,44 @@ class MainMenuActivity : ComponentActivity() {
                 dismissButton = {}
             )
         }
+
+        if (showGameIdInputDialog) {
+            AlertDialog(
+                onDismissRequest = { showGameIdInputDialog = false },
+                title = { Text("Введіть ID гри") },
+                text = {
+                    Column {
+                        OutlinedTextField(
+                            value = gameIdInput,
+                            onValueChange = { gameIdInput = it },
+                            label = { Text("Game ID") }
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(onClick = {
+                        showGameIdInputDialog = false
+                        val intent = Intent(this@MainMenuActivity, ChessBoardActivity::class.java).apply {
+                            putExtra("game_mode", GameMode.ONLINE.name)
+                            putExtra("player_color", PieceColor.BLACK.name)
+                            putExtra("online_action", "join")
+                            putExtra("game_id", gameIdInput)
+                        }
+                        startActivity(intent)
+                    }) {
+                        Text("Приєднатися")
+                    }
+                },
+                dismissButton = {
+                    Button(onClick = { showGameIdInputDialog = false }) {
+                        Text("Скасувати")
+                    }
+                }
+            )
+        }
+
     }
+
 
     private fun startChessGame(playerColor: PieceColor) {
         val intent = Intent(this, ChessBoardActivity::class.java).apply {
