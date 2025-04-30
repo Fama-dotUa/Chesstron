@@ -40,8 +40,11 @@ class ChessBoardViewModel : ViewModel() {
     private var suppressOnlineSync = false
 
     init {
-        resetGame()
+        if (gameState.value.pieces.isEmpty()) {
+            resetGame()
+        }
     }
+
 
     fun selectPiece(piece: ChessPiece, bypassCheck: Boolean = false) {
         if (!bypassCheck) {

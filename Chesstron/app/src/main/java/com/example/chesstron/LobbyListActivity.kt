@@ -76,9 +76,20 @@ class LobbyListActivity : ComponentActivity() {
     }
 
     private fun joinLobby(session: GameSession) {
+        val joiningColor = when {
+            session.playerWhiteId.isNullOrEmpty() -> PieceColor.WHITE
+            session.playerBlackId.isNullOrEmpty() -> PieceColor.BLACK
+            else -> null
+        }
+
+        if (joiningColor == null) {
+            Toast.makeText(this, "Лобі вже заповнене", Toast.LENGTH_SHORT).show()
+            return
+        }
+
         val intent = Intent(this, ChessBoardActivity::class.java).apply {
             putExtra("game_mode", "ONLINE")
-            putExtra("player_color", PieceColor.BLACK.name)
+            putExtra("player_color", joiningColor.name)
             putExtra("online_action", "join")
             putExtra("game_id", session.gameId)
         }

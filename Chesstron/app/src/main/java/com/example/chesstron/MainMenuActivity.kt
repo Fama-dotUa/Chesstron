@@ -133,7 +133,7 @@ class MainMenuActivity : ComponentActivity() {
                         }
                         Button(
                             onClick = { showColorChoiceDialog = true },
-                            modifier = Modifier.width(200.dp)
+                            modifier = Modifier.fillMaxWidth()
                         ) {
                             Text("Гра проти комп'ютера")
                         }
