@@ -41,6 +41,9 @@ import com.example.chesstron.data.model.PieceColor
 import com.example.chesstron.data.model.PieceType
 import com.example.chesstron.domain.usecase.ChessCell
 import com.example.chesstron.presentation.viewmodel.ChessBoardViewModel
+import android.app.Activity
+import androidx.compose.ui.platform.LocalContext
+
 
 @SuppressLint("UnusedBoxWithConstraintsScope")
 @Composable
@@ -58,6 +61,7 @@ fun ChessBoard(
     val context = LocalContext.current
     val rows = 0..7
     val cols = 0..7
+    val activity = context as? Activity
 
     LaunchedEffect(Unit) {
         SoundManager.initialize(context)
@@ -185,30 +189,45 @@ fun ChessBoard(
     }
 
     if (gameState.isMate) {
-        AlertDialog(
-            onDismissRequest = {},
-            title = { Text("Мат!") },
-            text = { Text("Гра закінчена.") },
-            confirmButton = {
-                Button(onClick = { viewModel.resetGame() }) {
-                    Text("Нова гра")
-                }
+        if (gameMode == GameMode.ONLINE) {
+            // Повертаємось назад у меню
+            LaunchedEffect(Unit) {
+                activity?.finish()
             }
-        )
+        } else {
+            AlertDialog(
+                onDismissRequest = {},
+                title = { Text("Мат!") },
+                text = { Text("Гра закінчена.") },
+                confirmButton = {
+                    Button(onClick = { viewModel.resetGame(gameMode, playerColor) }) {
+                        Text("Нова гра")
+                    }
+                }
+            )
+        }
     }
 
+
     if (gameState.isStalemate) {
-        AlertDialog(
-            onDismissRequest = {},
-            title = { Text("Пат!") },
-            text = { Text("Гра закінчилася нічиєю.") },
-            confirmButton = {
-                Button(onClick = { viewModel.resetGame() }) {
-                    Text("Нова гра")
-                }
+        if (gameMode == GameMode.ONLINE) {
+            LaunchedEffect(Unit) {
+                activity?.finish()
             }
-        )
+        } else {
+            AlertDialog(
+                onDismissRequest = {},
+                title = { Text("Пат!") },
+                text = { Text("Гра закінчилася нічиєю.") },
+                confirmButton = {
+                    Button(onClick = { viewModel.resetGame(gameMode, playerColor) }) {
+                        Text("Нова гра")
+                    }
+                }
+            )
+        }
     }
+
 }
 
 @Composable

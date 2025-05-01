@@ -15,6 +15,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.chesstron.data.GameMode
@@ -35,10 +36,13 @@ class ChessBoardActivity : ComponentActivity() {
         val action = intent?.getStringExtra("online_action")
         val lobbyName = intent?.getStringExtra("lobby_name") ?: ""
         val lobbyPassword = intent?.getStringExtra("lobby_password")
-        val gameId = intent?.getStringExtra("game_id") // якщо треба буде
-
+        val gameId = intent?.getStringExtra("game_id")
         setContent {
             val viewModel: ChessBoardViewModel = viewModel()
+
+            LaunchedEffect(Unit) {
+                viewModel.resetGame(gameMode, playerColor)
+            }
 
             if (gameMode == GameMode.ONLINE) {
                 when (action) {

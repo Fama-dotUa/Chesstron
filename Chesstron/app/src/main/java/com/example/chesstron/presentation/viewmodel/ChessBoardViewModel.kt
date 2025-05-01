@@ -38,11 +38,14 @@ class ChessBoardViewModel : ViewModel() {
     var currentGameId: String? = null
     private var skipNextSnapshot = false
     private var suppressOnlineSync = false
+    var hasInitializedOnlineGame = false
+        private set
+    var hasGameBeenInitialized = false
+        private set
+
 
     init {
-        if (gameState.value.pieces.isEmpty()) {
-            resetGame()
-        }
+
     }
 
 
@@ -103,7 +106,8 @@ class ChessBoardViewModel : ViewModel() {
                 this.row = -1
                 this.col = -1
             }
-        } else {
+        }
+        else {
             gameState.value.pieces.find { it.row == row && it.col == col && it.color != piece.color }?.apply {
                 this.row = -1
                 this.col = -1
@@ -155,7 +159,8 @@ class ChessBoardViewModel : ViewModel() {
                 )
                 return
             }
-        } else if (gameMode == GameMode.ONLINE && !suppressOnlineSync) {
+        }
+        else if (gameMode == GameMode.ONLINE && !suppressOnlineSync) {
             sendMoveOnline(startRow to startCol, row to col)
         }
 
@@ -185,6 +190,7 @@ class ChessBoardViewModel : ViewModel() {
             makeBotMove()
         }
     }
+
     fun promotePawn(newType: PieceType) {
         val pawn = gameState.value.pendingPromotion ?: return
 
@@ -273,6 +279,9 @@ class ChessBoardViewModel : ViewModel() {
     }
 
     fun resetGame(gameMode: GameMode = GameMode.SINGLE_DEVICE, playerColor: PieceColor = PieceColor.WHITE) {
+        if (hasGameBeenInitialized) return // ❗ Гарантія що тільки раз
+        hasGameBeenInitialized = false // дозволяємо повторний reset
+
         moveHistory.clear()
 
         val pieces = if (gameMode == GameMode.VS_COMPUTER) {
@@ -280,18 +289,20 @@ class ChessBoardViewModel : ViewModel() {
         } else {
             initializePieces()
         }
+
         this.gameMode = gameMode
         this.playerColor = playerColor
+
         gameState.value = GameState(
             pieces = pieces,
             currentTurn = PieceColor.WHITE
         )
-        // Якщо гравець обрав чорних, то бот починає перший
+
         if (gameMode == GameMode.VS_COMPUTER && playerColor == PieceColor.BLACK) {
             makeBotMove()
         }
-
     }
+
 
     fun getClickedPiece(row: Int, col: Int): ChessPiece? =
         gameState.value.pieces.find { it.row == row && it.col == col }
@@ -362,6 +373,8 @@ class ChessBoardViewModel : ViewModel() {
 
     fun makeBotMove() {
         viewModelScope.launch {
+            Log.d("BOT", "makeBotMove called. Turn: ${gameState.value.currentTurn}")
+
             delay(500L)
 
             if (gameState.value.gameOver) return@launch
@@ -403,6 +416,9 @@ class ChessBoardViewModel : ViewModel() {
     }
 
     fun joinOnlineGame(gameId: String, playerColor: PieceColor) {
+        if (hasInitializedOnlineGame) return
+        hasInitializedOnlineGame = true
+
         viewModelScope.launch {
             resetGame(GameMode.ONLINE, playerColor)
 
@@ -413,9 +429,10 @@ class ChessBoardViewModel : ViewModel() {
                     "status",
                     "playing"
                 ).await()
-            currentGameId = gameId
 
+            currentGameId = gameId
             listenToOnlineGame(gameId)
+
             Log.d("FIREBASE", "Joined game with ID: $gameId")
         }
     }
@@ -461,7 +478,6 @@ class ChessBoardViewModel : ViewModel() {
             }
     }
 
-
     fun sendMoveOnline(from: Pair<Int, Int>, to: Pair<Int, Int>, promotion: PieceType? = null) {
         val moveString = "${from.first}${from.second}${to.first}${to.second}"
 
@@ -485,8 +501,10 @@ class ChessBoardViewModel : ViewModel() {
     }
 
     fun createLobby(name: String, password: String?, playerColor: PieceColor) {
+        if (hasInitializedOnlineGame) return // ❗ Захист
+        hasInitializedOnlineGame = true
+
         viewModelScope.launch {
-            resetGame(GameMode.ONLINE, playerColor)
             val gameId = firestore.collection("games").document().id
 
             val session = GameSession(
@@ -502,7 +520,10 @@ class ChessBoardViewModel : ViewModel() {
 
             firestore.collection("games").document(gameId).set(session).await()
             currentGameId = gameId
+
+            resetGame(GameMode.ONLINE, playerColor)
             listenToOnlineGame(gameId)
+
             Log.d("FIREBASE", "Лобі створено: $name ($gameId)")
         }
     }

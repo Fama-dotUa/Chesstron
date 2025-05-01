@@ -3,16 +3,20 @@ package com.example.chesstron
 import android.content.Intent
 import android.os.Bundle
 import android.util.Log
-import android.widget.*
+import android.widget.ArrayAdapter
+import android.widget.LinearLayout
+import android.widget.ListView
+import android.widget.ProgressBar
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.lifecycleScope
 import com.example.chesstron.data.model.GameSession
 import com.example.chesstron.data.model.PieceColor
-import com.example.chesstron.presentation.viewmodel.ChessBoardViewModel
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
-import com.google.firebase.firestore.FirebaseFirestore
 
 class LobbyListActivity : ComponentActivity() {
 
@@ -76,9 +80,10 @@ class LobbyListActivity : ComponentActivity() {
     }
 
     private fun joinLobby(session: GameSession) {
+
         val joiningColor = when {
-            session.playerWhiteId.isNullOrEmpty() -> PieceColor.WHITE
-            session.playerBlackId.isNullOrEmpty() -> PieceColor.BLACK
+            session.playerWhiteId.isEmpty() -> PieceColor.WHITE
+            session.playerBlackId.isEmpty() -> PieceColor.BLACK
             else -> null
         }
 
