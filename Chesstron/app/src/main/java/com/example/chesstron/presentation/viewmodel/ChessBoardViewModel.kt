@@ -279,8 +279,9 @@ class ChessBoardViewModel : ViewModel() {
     }
 
     fun resetGame(gameMode: GameMode = GameMode.SINGLE_DEVICE, playerColor: PieceColor = PieceColor.WHITE) {
-        if (hasGameBeenInitialized) return // ❗ Гарантія що тільки раз
-        hasGameBeenInitialized = false // дозволяємо повторний reset
+        if (hasGameBeenInitialized) return
+
+        hasGameBeenInitialized = true
 
         moveHistory.clear()
 

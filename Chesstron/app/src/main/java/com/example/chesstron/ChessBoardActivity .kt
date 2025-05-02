@@ -40,9 +40,10 @@ class ChessBoardActivity : ComponentActivity() {
         setContent {
             val viewModel: ChessBoardViewModel = viewModel()
 
-            LaunchedEffect(Unit) {
+            if (gameMode != GameMode.ONLINE && !viewModel.hasGameBeenInitialized) {
                 viewModel.resetGame(gameMode, playerColor)
             }
+
 
             if (gameMode == GameMode.ONLINE) {
                 when (action) {
