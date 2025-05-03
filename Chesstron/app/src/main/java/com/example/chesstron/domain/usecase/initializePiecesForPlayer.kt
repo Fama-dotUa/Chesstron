@@ -5,7 +5,9 @@ import com.example.chesstron.data.model.PieceColor
 import com.example.chesstron.presentation.viewmodel.opposite
 
 fun initializePiecesForPlayer(playerColor: PieceColor): List<ChessPiece> {
-    val pieces = initializePieces()
+
+    return initializePieces()
+    /*val pieces = initializePieces()
     return if (playerColor == PieceColor.WHITE) {
         pieces
     } else {
@@ -15,5 +17,5 @@ fun initializePiecesForPlayer(playerColor: PieceColor): List<ChessPiece> {
                 col = 7 - piece.col
             )
         }
-    }
+    }*/
 }

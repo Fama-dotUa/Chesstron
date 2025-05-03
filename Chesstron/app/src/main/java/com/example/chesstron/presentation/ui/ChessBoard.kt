@@ -42,6 +42,7 @@ import com.example.chesstron.data.model.PieceType
 import com.example.chesstron.domain.usecase.ChessCell
 import com.example.chesstron.presentation.viewmodel.ChessBoardViewModel
 import android.app.Activity
+import android.util.Log
 import androidx.compose.ui.platform.LocalContext
 
 
@@ -80,6 +81,11 @@ fun ChessBoard(
             viewModel.lastEvent.value = null
         }
     }
+    LaunchedEffect(Unit) {
+        Log.d("DEBUG", "playerColor at UI: $playerColor, model: ${viewModel.playerColor}")
+    }
+
+
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
@@ -119,7 +125,7 @@ fun ChessBoard(
                                         if (gameState.gameOver) return@ChessCell
 
                                         val (actualRow, actualCol) = adjustCoordinatesForPlayer(row, col, playerColor)
-                                        val clickedPiece = viewModel.getClickedPiece(actualRow, actualCol) // <<< ВАЖЛИВО!
+                                        val clickedPiece = viewModel.getClickedPiece(actualRow, actualCol)
 
                                         when {
                                             selectedPiece == null && clickedPiece != null -> {

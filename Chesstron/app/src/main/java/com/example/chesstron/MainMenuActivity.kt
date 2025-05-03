@@ -65,7 +65,6 @@ class MainMenuActivity : ComponentActivity() {
                     onClick = {
                         val intent = Intent(this@MainMenuActivity, CreateLobbyActivity::class.java).apply {
                             putExtra("game_mode", GameMode.ONLINE.name)
-                            putExtra("player_color", PieceColor.WHITE.name)
                             putExtra("online_action", "create")
                         }
                         startActivity(intent)

@@ -280,6 +280,7 @@ class ChessBoardViewModel : ViewModel() {
 
     fun resetGame(gameMode: GameMode = GameMode.SINGLE_DEVICE, playerColor: PieceColor = PieceColor.WHITE) {
         if (hasGameBeenInitialized) return
+        Log.d("DEBUG", "resetGame called with $playerColor")
 
         hasGameBeenInitialized = true
 
@@ -304,6 +305,10 @@ class ChessBoardViewModel : ViewModel() {
         }
     }
 
+    fun forceResetGame(gameMode: GameMode, playerColor: PieceColor) {
+        hasGameBeenInitialized = false
+        resetGame(gameMode, playerColor)
+    }
 
     fun getClickedPiece(row: Int, col: Int): ChessPiece? =
         gameState.value.pieces.find { it.row == row && it.col == col }
@@ -502,7 +507,7 @@ class ChessBoardViewModel : ViewModel() {
     }
 
     fun createLobby(name: String, password: String?, playerColor: PieceColor) {
-        if (hasInitializedOnlineGame) return // ❗ Захист
+        if (hasInitializedOnlineGame) return
         hasInitializedOnlineGame = true
 
         viewModelScope.launch {

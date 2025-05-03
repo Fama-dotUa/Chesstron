@@ -37,11 +37,12 @@ class ChessBoardActivity : ComponentActivity() {
         val lobbyName = intent?.getStringExtra("lobby_name") ?: ""
         val lobbyPassword = intent?.getStringExtra("lobby_password")
         val gameId = intent?.getStringExtra("game_id")
+
         setContent {
             val viewModel: ChessBoardViewModel = viewModel()
 
             if (gameMode != GameMode.ONLINE && !viewModel.hasGameBeenInitialized) {
-                viewModel.resetGame(gameMode, playerColor)
+                viewModel.forceResetGame(gameMode, playerColor)
             }
 
 
