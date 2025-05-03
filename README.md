@@ -35,6 +35,11 @@ com.example.chesstron/
 
 ## 📲 Скриншоти
 
+### ▶️ Головне меню
+![Main Menu](screenshots/main_menu.jpg)
+
+### ♟️ Ігрове поле
+![Game Screen](screenshots/game_screen.jpg)
 
 ---
 
